@@ -3,10 +3,12 @@ Azure AKS Workshop: https://docs.microsoft.com/en-us/learn/modules/aks-workshop/
 
 ## Introduction
 ```shell
+
 REGION_NAME=eastus
 RESOURCE_GROUP=aks-workshop
 SUBNET_NAME=subnet-aks-workshop
 VNET_NAME=vnet-aks-workshop
+
 # login to Azure
 az login
 
@@ -54,6 +56,7 @@ az aks create \
 --node-count 2
 --node-vm-size standard_b1ms
 
+# get aks credentials
 az aks get-credentials \
     --resource-group $RESOURCE_GROUP \
     --name $AKS_CLUSTER_NAME
@@ -65,28 +68,32 @@ kubectx
 # create cluster role binding to the dashboard
 kubectl create clusterrolebinding kubernetes-dashboard --clusterrole=cluster-admin --serviceaccount=kube-system:kubernetes-dashboard
 
+# Open browser dashboard
 az aks browse --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER_NAME
 
 # get token
 kubectl -n kube-system get secrets
 kubectl -n kube-system describe secret kubernetes-dashboard-token-2zcqj| awk '$1=="token:"{print $2}'
 
+# get cluster secrets
 kubectl -n kube-system describe secret $(kubectl get secrets -n kube-system -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' | grep admin-user-token) | awk '$1=="token:"{print $2}'
-eyJhbGciOiJSUzI1NiIsImtpZCI6InVoaWlNVklhandaTnRqYk90N2NRbEVKS0N5ZkV5VU5SbjdUVDN3MFNyVkUifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJyZXNvdXJjZXF1b3RhLWNvbnRyb2xsZXItdG9rZW4tYzR3N2wiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoicmVzb3VyY2VxdW90YS1jb250cm9sbGVyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiNzJmYzY5ZDItMjM0MC00ODA5LTlkOGMtYmQwZmEzNmJkNzE0Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Omt1YmUtc3lzdGVtOnJlc291cmNlcXVvdGEtY29udHJvbGxlciJ9.lBSuU5O7tGYNmkQ-zzkBrypSlcRdx0G7JWeJR-FBKHI_Q7YqPNyKD1StCBTOiCpy40OZHyaPQ7-HQ5YEGVL4aCjdYMxMsCFr_ERN1U7N4YaQQuQ8cQYegV5O4DdSbQ3vWI7krwtwhI4qGmyc5YiddLJhU4laQYQX7bM0S0ISYz5uZYRS1tTMdteQNyMX0XSVmOvSpgiRiI2JZkWqmN51pgEbsVMuiLYbuiTdZOJnJmZ9-IGTvbed0jX8163pu0UOjwo30TPxdMVJqALovEdx2oWW4vMNvbXKvMZC0hCBO1wPjTYawuWgSjjOdqeHlMMW-cs7_8rEk2L2zzpYJWVVr9GVdS1rJb_dI2DeeO2jTupcweD0lgUnqW3yI3DSx7dXKQtieyo68dlSIYMVxbA0QCjfMoeAjBO1I_CBxYt391RWb0VRxA7il47F4SuSUnp_BstV4PxVtzGiec5OdcAv2uebIcI4_ZiU-3rSYnzh0vZU5aIdKpKgkMCnfuZRLa-QJUWaXT5ZF9lJKyafotOpjhOGKFOsBZTNu3jX47dYbouubFhYNiOqgyqEl0bJ8Qza4mvfhEL5Nv-zmweWvXrh1lLtAjJAq8-YL47A25AEiKi7jURCKabdLcJPZvppAmm_SY3QLHNWiUoF7uu_FEglI2CxUL-sM-haWTARgjGEAFY
 
 ```
 
 ## Applications
 ```shel
 
+# create namespace
 kubectl create namespace ratingsapp
 
 ```
 
 ## Container Registry
 ```shell
+
 ACR_NAME=azureworkshopregistry
 
+# create a azure container registry
 az acr create \
     --resource-group $RESOURCE_GROUP \
     --location $REGION_NAME \
@@ -96,6 +103,7 @@ az acr create \
 
 ## ratings app
 ```shell
+
 git clone https://github.com/MicrosoftDocs/mslearn-aks-workshop-ratings-api.git
 
 cd mslearn-aks-workshop-ratings-api
@@ -131,20 +139,25 @@ az aks update \
 
 ## setup mongo db
 ```shell
+
+# add helm repo
 helm repo add stable https://kubernetes-charts.storage.googleapis.com/
 
 helm search repo stable
 
+# install mongodb
 helm install ratings stable/mongodb \
     --namespace ratingsapp \
     --set mongodbUsername=mongoadmin,mongodbPassword=mongopwd,mongodbDatabase=ratingsdb
 
+# create secret for mongodb
 kubectl create secret generic mongosecret \
     --namespace ratingsapp \
     --from-literal=MONGOCONNECTION="mongodb://mongoadmin:mongopwd@ratings-mongodb.ratingsapp.svc.cluster.local:27017/ratingsdb"
 
 kubectl describe secret mongosecret --namespace ratingsapp
 
+# deploy rating api
 kubectl apply \
     --namespace ratingsapp \
     -f ratings-api-deployment.yaml
@@ -153,6 +166,7 @@ kubectl get pods \
     --namespace ratingsapp \
     -l app=ratings-api -w
 
+# create rating api service
 kubectl apply \
     --namespace ratingsapp \
     -f ratings-api-service.yaml
@@ -212,4 +226,53 @@ helm repo add jetstack https://charts.jetstack.io
 helm repo update
 
 kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+
+helm install cert-manager \
+    --namespace cert-manager \
+    --version v0.14.0 \
+    jetstack/cert-manager
+
+kubectl get pods --namespace cert-manager
+
+cd cert-manager
+kubectl apply \
+    --namespace ratingsapp \
+    -f cluster-issuer.yaml
+
+kubectl apply \
+    --namespace ratingsapp \
+    -f ratings-web-ingress.yaml
+
+kubectl describe cert ratings-web-cert --namespace ratingsapp
 ```
+
+## Monitoring 
+```shell
+WORKSPACE=aks-workshop-workspace-$RANDOM
+
+az resource create --resource-type Microsoft.OperationalInsights/workspaces \
+        --name $WORKSPACE \
+        --resource-group $RESOURCE_GROUP \
+        --location $REGION_NAME \
+        --properties '{}' -o table
+
+WORKSPACE_ID=$(az resource show --resource-type Microsoft.OperationalInsights/workspaces \
+    --resource-group $RESOURCE_GROUP \
+    --name $WORKSPACE \
+    --query "id" -o tsv)
+
+az aks enable-addons \
+    --resource-group $RESOURCE_GROUP \
+    --name $AKS_CLUSTER_NAME \
+    --addons monitoring \
+    --workspace-resource-id $WORKSPACE_ID
+
+cd monitor
+
+# setup Role and Cluster Role binding
+kubectl apply \
+    -f logreader-rbac.yaml
+```
+
+## Horizontal POD Autoscaler
+
