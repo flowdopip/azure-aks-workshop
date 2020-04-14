@@ -51,8 +51,8 @@ az aks create \
 --dns-service-ip 10.2.0.10 \
 --docker-bridge-address 172.17.0.1/16 \
 --generate-ssh-keys \
---service-principal 95200784-9925-41e6-8a78-229c67426b05 \
---client-secret O?k_Ahiq8QyU@ucg=an0D23s609vMg8X \
+--service-principal $SERVICE_PRINCIPAL \
+--client-secret $CLIENT_SECRET \
 --node-count 2
 --node-vm-size standard_b1ms
 
